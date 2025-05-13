@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Поиск Плательщика</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 2rem;
+            background: #f5f8fa;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: grid;
+            gap: 1rem;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        input:invalid {
+            border-color: #e53935;
+        }
+
+        button {
+            padding: 0.7rem 1.2rem;
+            font-size: 1rem;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .row {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+
+        .row > * {
+            flex: 1;
+        }
+
+        .message {
+            padding: 0.8rem;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .error {
+            background-color: #ffe5e5;
+            color: #c0392b;
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        @media (max-width: 500px) {
+            .row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div>
+            <label for="unp">УНП*</label>
+            <input type="text" id="unp" required minlength="9" maxlength="9" pattern="\\d{9}" />
+        </div>
+        <div>
+            <button id="fetchBtn">ЗАПОЛНИТЬ</button>
+        </div>
+    </div>
+
+    <div id="message" class="message" style="display: none;"></div>
+
+    <div>
+        <label>Полное наименование плательщика</label>
+        <input type="text" id="fullName" readonly />
+    </div>
+    <div>
+        <label>Адрес</label>
+        <input type="text" id="address" readonly />
+    </div>
+    <div>
+        <label>Дата постановки на учет</label>
+        <input type="text" id="registrationDate" readonly />
+    </div>
+    <div>
+        <label>Статус</label>
+        <input type="text" id="status" readonly />
+    </div>
+</div>
+
+<script>
+    const fetchBtn = document.getElementById('fetchBtn');
+    const unpInput = document.getElementById('unp');
+    const messageBox = document.getElementById('message');
+
+    function showMessage(text, type = 'error') {
+        messageBox.style.display = 'block';
+        messageBox.className = `message ${type}`;
+        messageBox.textContent = text;
+    }
+
+    function clearMessage() {
+        messageBox.style.display = 'none';
+        messageBox.textContent = '';
+    }
+
+    function clearFields() {
+        document.getElementById('fullName').value = '';
+        document.getElementById('address').value = '';
+        document.getElementById('registrationDate').value = '';
+        document.getElementById('status').value = '';
+    }
+
+    fetchBtn.addEventListener('click', () => {
+        const unp = unpInput.value.trim();
+        clearMessage();
+        clearFields();
+
+        if (!/^\d{9}$/.test(unp)) {
+            showMessage('Введите корректный УНП (9 цифр).', 'error');
+            unpInput.focus();
+            return;
+        }
+
+        fetch(`/api/info?unp=${unp}`)
+            .then(res => {
+                if (!res.ok) {
+                    if (res.status === 404) {
+                        throw new Error('Плательщик не найден.');
+                    } else {
+                        throw new Error('Ошибка получения данных с сервера.');
+                    }
+                }
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById('fullName').value = data.fullName || '';
+                document.getElementById('address').value = data.address || '';
+                document.getElementById('registrationDate').value = data.registrationDate || '';
+                document.getElementById('status').value = data.status || '';
+                showMessage('Данные успешно загружены.', 'success');
+            })
+            .catch(err => {
+                showMessage(err.message || 'Произошла непредвиденная ошибка.', 'error');
+            });
+    });
+</script>
+</body>
+</html>
